@@ -5,9 +5,7 @@ import { jidNormalizedUser } from '@whiskeysockets/baileys';
  * Retourne le "meilleur" nom pour afficher/mentionner la personne
  */
 async function getDisplayName(sock, jid) {
-  // Essaye d’obtenir le nom WhatsApp si dispo
   try {
-    // Baileys expose parfois .getName; sinon on tente la métadonnée
     if (typeof sock.getName === 'function') {
       const name = await sock.getName(jid);
       if (name) return name;
@@ -20,7 +18,6 @@ async function getDisplayName(sock, jid) {
     if (name) return name;
   } catch (_) {}
 
-  // Fallback: numéro
   return jid.split('@')[0];
 }
 
@@ -31,9 +28,8 @@ export async function handleGroupParticipantsUpdate({ sock, groupId, groupName, 
   const userJid = jidNormalizedUser(participantJid);
   const displayName = await getDisplayName(sock, userJid);
 
-  // --- 1) Message dans le groupe (avec mention)
   const groupText =
-    `👋 🎉 Bienvenue @${userJid.split('@')[0]} dans la communauté SportFever — QG des addicts de sport ! 🏅\n\n`  +
+    `👋 🎉 Bienvenue @${userJid.split('@')[0]} dans la communauté SportFever — QG des addicts de sport ! 🏅\n\n` +
     `📌 Présente-toi à nous en répondant à ce message ! 😊\n\n`;
 
   await sock.sendMessage(groupId, {
@@ -41,7 +37,6 @@ export async function handleGroupParticipantsUpdate({ sock, groupId, groupName, 
     mentions: [userJid]
   });
 
-  // --- 2) Message privé (DM)
   const dmText =
     `Bienvenue dans la communauté *SportFever* — QG des addicts de sport ! 🏅\n\n` +
     `📖 *Règles du groupe + Planning :*\n👉 ${rulesUrl}`;
