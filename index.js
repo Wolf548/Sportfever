@@ -37,11 +37,11 @@ async function start() {
     if (events['connection.update']) {
       const { connection, lastDisconnect, qr } = events['connection.update'];
 
-      // 👉 QR sous forme de lien cliquable
+      // 👉 QR sous forme de lien cliquable (format compact 300x300)
       if (qr) {
-        const link = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(qr)}`;
+        const link = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qr)}`;
         logger.info('============================');
-        logger.info(`🔗 SCANNE LE QR ICI : ${link}`);
+        logger.info(`🔗 SCANNE LE QR ICI (format compact) : ${link}`);
         logger.info('============================');
       }
 
