@@ -8,7 +8,6 @@ const {
 } = baileys;
 
 import pino from 'pino';
-import qrcode from 'qrcode-terminal';
 import 'dotenv/config';
 import { mkdir } from 'fs/promises';
 import { handleGroupParticipantsUpdate } from './bot.js';
@@ -28,7 +27,7 @@ async function start() {
   const sock = makeWASocket({
     version,
     logger,
-    // ⚠️ Désactive l’ASCII en terminal pour éviter la coupure
+    // 🚫 Pas de QR ASCII tronqué
     printQRInTerminal: false,
     auth: state,
     browser: ['SportFeverBot', 'Chrome', '1.0']
@@ -38,13 +37,12 @@ async function start() {
     if (events['connection.update']) {
       const { connection, lastDisconnect, qr } = events['connection.update'];
 
-      // ➜ Génère un lien image QR cliquable dans les logs Render
+      // 👉 QR sous forme de lien cliquable
       if (qr) {
         const link = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(qr)}`;
-        logger.info(`🔗 QR_CODE_LINK: ${link}`);
-        logger.info('Ouvre ce lien dans ton navigateur puis scanne le QR avec WhatsApp.');
-        // Optionnel: si tu veux aussi l’ASCII en local
-        try { qrcode.generate(qr, { small: true }); } catch {}
+        logger.info('============================');
+        logger.info(`🔗 SCANNE LE QR ICI : ${link}`);
+        logger.info('============================');
       }
 
       if (connection === 'close') {
@@ -58,13 +56,13 @@ async function start() {
 
     if (events['creds.update']) await saveCreds();
 
-    // Accueil automatique des nouveaux membres du groupe ciblé
+    // Accueil automatique des nouveaux membres
     if (events['group-participants.update']) {
       const update = events['group-participants.update'];
       try {
         const meta = await sock.groupMetadata(update.id);
         if (!meta) return;
-        if (meta.subject !== GROUP_NAME) return; // filtre strict par nom de groupe
+        if (meta.subject !== GROUP_NAME) return; // filtre par nom du groupe
         if (update.action !== 'add') return;
 
         for (const jid of update.participants || []) {
