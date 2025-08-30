@@ -35,14 +35,7 @@ async function start() {
   sock.ev.process(async (events) => {
     if (events['connection.update']) {
       const { connection, lastDisconnect, qr } = events['connection.update'];
-
-import fs from 'fs';
-import path from 'path';
-
-if (qr) {
-  qrcode.generate(qr, { small: false }); // QR plus grand
-  fs.writeFileSync(path.join('/tmp', 'qr.txt'), qr); // sauvegarde brute
-}
+      if (qr) qrcode.generate(qr, { small: true });
 
       if (connection === 'close') {
         const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
