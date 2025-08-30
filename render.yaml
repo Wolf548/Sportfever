@@ -1,1 +1,19 @@
-h
+services:
+  - type: worker
+    name: sportfever-bot
+    env: node
+    plan: starter
+    region: frankfurt
+    buildCommand: "npm ci"
+    startCommand: "node index.js"
+    envVars:
+      - key: GROUP_NAME
+        value: "Discussion générale (infos générales, accueil des participants) Sportfever 🔥"
+      - key: RULES_URL
+        value: "https://docs.google.com/document/d/10TfTNwd772tJlpu0unhmYlBi3-Lp4xD-mDnDwmeXG_o/edit?tab=t.0#heading=h.r3nwnnsq3h13"
+      - key: AUTH_DIR
+        value: "/var/data/auth"
+    disks:
+      - name: auth-data
+        mountPath: /var/data
+        sizeGB: 1
