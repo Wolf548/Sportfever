@@ -13,6 +13,8 @@ services:
         value: "https://docs.google.com/document/d/10TfTNwd772tJlpu0unhmYlBi3-Lp4xD-mDnDwmeXG_o/edit?tab=t.0#heading=h.r3nwnnsq3h13"
       - key: AUTH_DIR
         value: "/var/data/auth"
+      - key: PHONE_NUMBER
+        value: "+33695980132" # <-- Ton numéro WhatsApp au format international
     disks:
       - name: auth-data
         mountPath: /var/data
