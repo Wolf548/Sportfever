@@ -1,4 +1,4 @@
-// index.js (pairing code)
+// index.js — pairing code robuste
 import baileys from '@whiskeysockets/baileys';
 const {
   default: makeWASocket,
@@ -14,50 +14,81 @@ import { handleGroupParticipantsUpdate } from './bot.js';
 
 const logger = pino({ level: 'info' });
 
-// ENV
 const GROUP_NAME = process.env.GROUP_NAME || 'Discussion générale (infos générales, accueil des participants) Sportfever 🔥';
 const RULES_URL  = process.env.RULES_URL  || 'https://docs.google.com/document/d/10TfTNwd772tJlpu0unhmYlBi3-Lp4xD-mDnDwmeXG_o/edit?tab=t.0#heading=h.r3nwnnsq3h13';
 const AUTH_DIR   = process.env.AUTH_DIR   || './auth'; // sur Render: /var/data/auth
-const PHONE_NUMBER = (process.env.PHONE_NUMBER || '').trim(); // ex: +33695980132
+const PHONE_NUMBER_RAW = (process.env.PHONE_NUMBER || '').trim();
+const PHONE_NUMBER = PHONE_NUMBER_RAW.replace(/[^\d+]/g, '');
+
+logger.info('🚀 Démarrage SportFeverBot');
+logger.info(`📂 AUTH_DIR: ${AUTH_DIR}`);
+logger.info(`☎️ PHONE_NUMBER détecté: ${PHONE_NUMBER || '(absent)'}`);
 
 async function start() {
   await mkdir(AUTH_DIR, { recursive: true });
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
   const { version } = await fetchLatestBaileysVersion();
+  logger.info(`🧩 Baileys version WA: ${version.join('.')}`);
 
   const sock = makeWASocket({
     version,
     logger,
-    printQRInTerminal: false,   // on ne veut plus d'ASCII
+    printQRInTerminal: false,      // pas d'ASCII
     auth: state,
-    browser: ['SportFeverBot', 'Chrome', '1.0']
+    browser: ['SportFeverBot', 'Chrome', '1.0'],
+    markOnlineOnConnect: false
   });
 
-  let pairingRequested = false;
+  let pairingTried = false;
+
+  // 🔁 tente un appairage toutes les 10s tant que non connecté
+  const tryPairing = async () => {
+    if (pairingTried || !PHONE_NUMBER) return;
+    pairingTried = true;
+    try {
+      logger.info('🗝️ Demande de CODE d’appairage à WhatsApp…');
+      const code = await sock.requestPairingCode(PHONE_NUMBER);
+      logger.info('============================');
+      logger.info(`📲 CODE D’APPAIRAGE WHATSAPP : ${code}`);
+      logger.info('WhatsApp → Réglages → Appareils connectés → Lier un appareil → Lier avec un numéro de téléphone, puis saisis ce code.');
+      logger.info('============================');
+    } catch (err) {
+      pairingTried = false; // autorise un retry
+      logger.error({ err }, '❌ Échec génération du code. Nouveau test dans 10s…');
+      setTimeout(tryPairing, 10_000);
+    }
+  };
 
   sock.ev.process(async (events) => {
     if (events['connection.update']) {
-      const { connection, lastDisconnect } = events['connection.update'];
+      const { connection, lastDisconnect, qr } = events['connection.update'];
+      logger.info(`🔌 connection.update: ${connection || 'unknown'}`);
 
-      // ➜ Demande le code d’appairage dès que possible
-      if (!pairingRequested && PHONE_NUMBER && connection !== 'open') {
-        pairingRequested = true;
-        try {
-          const phone = PHONE_NUMBER.replace(/[^\d+]/g, '');
-          const code = await sock.requestPairingCode(phone);
-          logger.info('============================');
-          logger.info(`📲 CODE D’APPAIRAGE WHATSAPP : ${code}`);
-          logger.info('Dans WhatsApp: Réglages → Appareils connectés → Lier un appareil → Lier avec un numéro de téléphone, puis saisis ce code.');
-          logger.info('============================');
-        } catch (err) {
-          logger.error({ err }, 'Échec génération du code d’appairage. Vérifie PHONE_NUMBER et la version de WhatsApp.');
-        }
+      // si pas de numéro, on donne un QR image (compact)
+      if (qr && !PHONE_NUMBER) {
+        const link = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qr)}`;
+        logger.info('============================');
+        logger.info(`🔗 SCANNE LE QR (compact) : ${link}`);
+        logger.info('============================');
+      }
+
+      if (connection !== 'open') {
+        // force l’appairage par code si possible
+        if (PHONE_NUMBER) tryPairing();
       }
 
       if (connection === 'close') {
-        const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
-        if (shouldReconnect) start();
+        const statusCode = (lastDisconnect?.error)?.output?.statusCode;
+        logger.warn(`⚠️ Connection close (status ${statusCode ?? 'n/a'})`);
+        const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+        if (shouldReconnect) {
+          logger.info('🔁 Reconnexion…');
+          start();
+        } else {
+          logger.error('🚪 Déconnecté (logged out). Supprime la session et recommence.');
+        }
       }
+
       if (connection === 'open') {
         logger.info('✅ Connecté.');
       }
@@ -65,7 +96,6 @@ async function start() {
 
     if (events['creds.update']) await saveCreds();
 
-    // Accueil auto des nouveaux
     if (events['group-participants.update']) {
       const update = events['group-participants.update'];
       try {
