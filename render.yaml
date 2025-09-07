@@ -9,7 +9,7 @@ services:
       - key: AUTH_DIR
         value: "/var/data/auth"
       - key: PHONE_NUMBER
-        value: "+33695980133"
+        value: "+33695980133"   # ton numéro WhatsApp au format international
     disks:
       - name: data
         mountPath: /var/data
