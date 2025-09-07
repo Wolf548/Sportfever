@@ -3,14 +3,17 @@ services:
     name: sportfever-bot
     env: node
     plan: starter
+    region: frankfurt
     buildCommand: "npm ci"
     startCommand: "node index.js"
+
     envVars:
       - key: AUTH_DIR
         value: "/var/data/auth"
       - key: PHONE_NUMBER
         value: "+33695980133"   # ton numéro WhatsApp au format international
-    disks:
+
+    volumes:
       - name: data
         mountPath: /var/data
         sizeGB: 1
